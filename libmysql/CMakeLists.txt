@@ -1,4 +1,4 @@
-# Copyright (c) 2006, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2006, 2020, Oracle and/or its affiliates. All rights reserved.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+
+ADD_WSHADOW_WARNING()
 
 SET(CLIENT_API_FUNCTIONS
   mysql_affected_rows
@@ -240,6 +242,12 @@ IF(WIN32)
   LIST(APPEND LIBS_TO_MERGE auth_win_client)
 ENDIF()
 
+<<<<<<< HEAD
+=======
+# LDAP authentication SASL client plugin
+ADD_SUBDIRECTORY(authentication_ldap)
+
+>>>>>>> mysql-8.0.20
 # Merge several convenience libraries into one big mysqlclient
 MERGE_CONVENIENCE_LIBRARIES(mysqlclient ${LIBS_TO_MERGE} COMPONENT Development SKIP_INSTALL)
 TARGET_LINK_LIBRARIES(mysqlclient PRIVATE ${LIBS_TO_LINK})
@@ -285,6 +293,11 @@ MERGE_LIBRARIES_SHARED(libmysql ${LIBS_TO_MERGE}
   COMPONENT SharedLibraries SKIP_INSTALL)
 TARGET_LINK_LIBRARIES(libmysql PRIVATE ${LIBS_TO_LINK})
 
+IF(LINUX_STANDALONE AND KERBEROS_CUSTOM_LIBRARY)
+  ADD_DEPENDENCIES(libmysql ${kerberos_target})
+  ADD_DEPENDENCIES(mysqlclient ${kerberos_target})
+ENDIF()
+
 IF(WIN32)
   # So that libmysql_api_test below can find the .dll
   ADD_CUSTOM_COMMAND(TARGET libmysql POST_BUILD
@@ -314,6 +327,8 @@ IF(UNIX)
       MACOSX_RPATH ON 
       )
   ENDIF()
+
+  ADD_INSTALL_RPATH_FOR_OPENSSL(libmysql)
 
   GET_TARGET_PROPERTY(libmysql_link_flags libmysql LINK_FLAGS)
   IF(LINK_FLAG_NO_UNDEFINED)
@@ -370,6 +385,14 @@ IF(MY_COMPILER_IS_GNU)
   ADD_COMPILE_FLAGS(
     ${CMAKE_CURRENT_BINARY_DIR}/api_test.c
     COMPILE_FLAGS -Wstrict-prototypes
+    )
+ENDIF()
+
+MY_CHECK_CXX_COMPILER_WARNING("-Wmissing-profile" HAS_WARN_FLAG)
+IF(HAS_WARN_FLAG)
+  ADD_COMPILE_FLAGS(
+    ${CMAKE_CURRENT_BINARY_DIR}/api_test.c
+    COMPILE_FLAGS ${HAS_WARN_FLAG}
     )
 ENDIF()
 

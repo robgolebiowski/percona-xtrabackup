@@ -87,6 +87,7 @@ referenced by the TRX_SYS page.
 dberr_t srv_undo_tablespaces_upgrade();
 
 /** Start InnoDB.
+<<<<<<< HEAD
 @param[in]  create_new_db     Whether to create a new database
 @param[in]  scan_directories  Scan directories for .ibd files for
                                         recovery "dir1;dir2; ... dirN"
@@ -94,6 +95,11 @@ dberr_t srv_undo_tablespaces_upgrade();
 @return DB_SUCCESS or error code */
 dberr_t srv_start(bool create_new_db, const std::string &scan_directories,
                   lsn_t to_lsn);
+=======
+@param[in]	create_new_db		Whether to create a new database
+@return DB_SUCCESS or error code */
+dberr_t srv_start(bool create_new_db) MY_ATTRIBUTE((warn_unused_result));
+>>>>>>> mysql-8.0.20
 
 /** Fix up an undo tablespace if it was in the process of being truncated
 when the server crashed. This is the second call and is done after the DD
@@ -149,10 +155,9 @@ ulint srv_path_copy(char *dest,             /*!< out: destination buffer */
 single-table tablespace.
 @param[in]	table		table object
 @param[out]	filename	filename
-@param[in]	max_len		filename max length
-@param[in]	convert		convert to lower case */
+@param[in]	max_len		filename max length */
 void srv_get_encryption_data_filename(dict_table_t *table, char *filename,
-                                      ulint max_len, bool convert = false);
+                                      ulint max_len);
 #endif /* !UNIV_HOTBACKUP */
 
 /** true if the server is being started */

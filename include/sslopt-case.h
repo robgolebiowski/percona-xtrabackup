@@ -24,9 +24,13 @@
   @file include/sslopt-case.h
 */
 
+<<<<<<< HEAD
 #if defined(HAVE_OPENSSL)
 
 #if defined(MYSQL_SERVER) && !defined(XTRABACKUP)
+=======
+#ifdef MYSQL_SERVER
+>>>>>>> mysql-8.0.20
 #error This header is supposed to be used only in the client
 #endif
 
@@ -50,4 +54,3 @@ case OPT_SSL_CRL:
 case OPT_SSL_CRLPATH:
 case OPT_TLS_VERSION:
   break;
-#endif /* HAVE_OPENSSL */

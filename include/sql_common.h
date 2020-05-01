@@ -159,7 +159,11 @@ struct MYSQL_METHODS {
                         unsigned int field_count);
   void (*flush_use_result)(MYSQL *mysql, bool flush_all_results);
   int (*read_change_user_result)(MYSQL *mysql);
+<<<<<<< HEAD
 #if !defined(MYSQL_SERVER) || defined(XTRABACKUP)
+=======
+#if !defined(MYSQL_SERVER) && !defined(MYSQL_COMPONENT)
+>>>>>>> mysql-8.0.20
   MYSQL_FIELD *(*list_fields)(MYSQL *mysql);
   bool (*read_prepare_result)(MYSQL *mysql, MYSQL_STMT *stmt);
   int (*stmt_execute)(MYSQL_STMT *stmt);

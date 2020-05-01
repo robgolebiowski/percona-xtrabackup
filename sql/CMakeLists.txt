@@ -1,4 +1,4 @@
-# Copyright (c) 2006, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2006, 2020, Oracle and/or its affiliates. All rights reserved.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -23,6 +23,19 @@
 INCLUDE_DIRECTORIES(SYSTEM ${BOOST_PATCHES_DIR} ${BOOST_INCLUDE_DIR})
 
 MY_INCLUDE_SYSTEM_DIRECTORIES(ICU)
+
+IF(MYSQL_MAINTAINER_MODE)
+  IF(MY_COMPILER_IS_GNU AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7)
+    ADD_COMPILE_OPTIONS("-Wshadow=local")
+  ELSEIF(MY_COMPILER_IS_CLANG)
+    ADD_COMPILE_OPTIONS("-Wshadow-uncaptured-local")
+  ENDIF()
+ENDIF()
+
+# Array indexing with pland_idx == int8 gives warnings.
+IF(SOLARIS AND MY_COMPILER_IS_GNU)
+  ADD_COMPILE_OPTIONS("-Wno-char-subscripts")
+ENDIF()
 
 SET(CONF_SOURCES
   ${CMAKE_CURRENT_BINARY_DIR}/sql_builtin.cc 
@@ -56,6 +69,11 @@ MYSQL_ADD_EXECUTABLE(gen_lex_token
   SKIP_INSTALL
   )
 
+MY_CHECK_CXX_COMPILER_WARNING("-Wmissing-profile" HAS_MISSING_PROFILE)
+IF(HAS_MISSING_PROFILE)
+  ADD_COMPILE_FLAGS(gen_lex_token.cc COMPILE_FLAGS ${HAS_MISSING_PROFILE})
+ENDIF()
+
 ADD_CUSTOM_COMMAND(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lex_token.h
   COMMAND gen_lex_token > lex_token.h
@@ -71,6 +89,10 @@ MYSQL_ADD_EXECUTABLE(gen_keyword_list
   SKIP_INSTALL
   )
 
+IF(HAS_MISSING_PROFILE)
+  ADD_COMPILE_FLAGS(gen_keyword_list.cc COMPILE_FLAGS ${HAS_MISSING_PROFILE})
+ENDIF()
+
 # ICU headers for WIN32 need extra info about their libs state
 IF(WIN32)
   ADD_COMPILE_DEFINITIONS(gen_keyword_list.cc COMPILE_DEFINITIONS
@@ -84,6 +106,7 @@ ADD_CUSTOM_COMMAND(
 )
 
 ADD_DEFINITIONS(-DMYSQL_SERVER)
+ADD_SUBDIRECTORY(server_component)
 
 SET(DD_SOURCES
   dd/collection.cc
@@ -125,12 +148,15 @@ SET(DD_SOURCES
   dd/impl/raw/raw_record_set.cc
   dd/impl/raw/raw_table.cc
 
+  dd/impl/system_views/administrable_role_authorizations.cc
+  dd/impl/system_views/applicable_roles.cc
   dd/impl/system_views/character_sets.cc
   dd/impl/system_views/check_constraints.cc
   dd/impl/system_views/collations.cc
   dd/impl/system_views/collation_charset_applicability.cc
   dd/impl/system_views/columns.cc
   dd/impl/system_views/column_statistics.cc
+  dd/impl/system_views/enabled_roles.cc
   dd/impl/system_views/events.cc
   dd/impl/system_views/files.cc
   dd/impl/system_views/innodb_datafiles.cc
@@ -144,6 +170,9 @@ SET(DD_SOURCES
   dd/impl/system_views/partitions.cc
   dd/impl/system_views/referential_constraints.cc
   dd/impl/system_views/resource_groups.cc
+  dd/impl/system_views/role_column_grants.cc
+  dd/impl/system_views/role_routine_grants.cc
+  dd/impl/system_views/role_table_grants.cc
   dd/impl/system_views/routines.cc
   dd/impl/system_views/schemata.cc
   dd/impl/system_views/statistics.cc
@@ -236,6 +265,8 @@ SET(DD_SOURCES
 
   dd/performance_schema/init.cc
 
+  dd/ndbinfo_schema/init.cc
+
   dd/upgrade_57/event.cc
   dd/upgrade_57/global.cc
   dd/upgrade_57/routine.cc
@@ -285,23 +316,6 @@ SET(SQL_GIS_SOURCES
   options_parser.cc
 )
 
-SET(MYSQL_SERVER_SUB_COMPONENT_SOURCES
-  server_component/backup_lock_service.cc
-  server_component/clone_protocol_service.cc
-  server_component/mysql_string_service.cc
-  server_component/persistent_dynamic_loader.cc
-  server_component/component_sys_var_service.cc
-  server_component/component_status_var_service.cc
-  server_component/ongoing_transaction_query_service.cc
-  server_component/system_variable_source_imp.cc
-  server_component/security_context_imp.cc
-  server_component/host_application_signal_imp.cc
-  server_component/audit_api_message_service_imp.cc
-  server_component/page_track_service.cc
-  server_component/mysql_current_thread_reader_imp.cc
-  server_component/keyring_iterator_service_imp.cc
-  )
-
 SET(SQL_SHARED_SOURCES
   abstract_query_plan.cc
   auth/auth_acls.cc
@@ -326,6 +340,7 @@ SET(SQL_SHARED_SOURCES
   auth/sha2_password_common.cc
   auth/sha2_password.cc
   ssl_wrapper_service.cc
+  bka_iterator.cc
   bootstrap.cc
   check_stack.cc
   conn_handler/connection_handler_manager.cc 
@@ -419,7 +434,6 @@ SET(SQL_SHARED_SOURCES
   partition_info.cc
   partitioning/partition_handler.cc
   persisted_variable.cc
-  procedure.cc 
   protocol_classic.cc
   psi_memory_key.cc
   query_result.cc
@@ -432,10 +446,8 @@ SET(SQL_SHARED_SOURCES
   resourcegroups/resource_group_mgr.cc
   resourcegroups/resource_group_sql_cmd.cc
   rpl_group_replication.cc
-  rpl_handler.cc
   rpl_transaction_ctx.cc
   rpl_transaction_write_set_ctx.cc
-  rpl_trx_tracking.cc
   rpl_write_set_handler.cc
   rules_table_service.cc
   rwlock_scoped_lock.cc
@@ -468,6 +480,7 @@ SET(SQL_SHARED_SOURCES
   sql_cmd_ddl_table.cc
   sql_cmd_srs.cc
   sql_connect.cc
+  sql_constraint.cc
   sql_cursor.cc
   sql_data_change.cc
   sql_db.cc
@@ -546,8 +559,11 @@ SET(SQL_SHARED_SOURCES
   uniques.cc
   xa.cc
   ssl_acceptor_context.cc
+<<<<<<< HEAD
   ../libmysql/libmysql.cc
   ${MYSQL_SERVER_SUB_COMPONENT_SOURCES}
+=======
+>>>>>>> mysql-8.0.20
 )
 
 # BISON_TARGET(<Name> <YaccInput> <CodeOutput>
@@ -763,13 +779,14 @@ IF(HAVE_NO_BUILTIN_MEMCMP)
   )
 ENDIF()
 
+
 ADD_LIBRARY(sql_main STATIC ${SQL_SOURCE})
 ADD_DEPENDENCIES(sql_main GenServerSource)
 ADD_DEPENDENCIES(sql_main GenDigestServerSource)
 ADD_DEPENDENCIES(sql_main GenBootstrapPriv)
 ADD_DEPENDENCIES(sql_main GenSysSchema)
 TARGET_LINK_LIBRARIES(sql_main ${MYSQLD_STATIC_PLUGIN_LIBS} 
-  component_mysql_server mysys strings vio
+  mysql_server_component_services mysys strings vio
   binlogevents_static ${LIBWRAP} ${LIBCRYPT} ${LIBDL} ${SSL_LIBRARIES})
 
 ADD_LIBRARY(sql_gis STATIC ${SQL_GIS_SOURCES})
@@ -784,7 +801,7 @@ SET_TARGET_PROPERTIES(sql_gis PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)
 # A class with a reference member lacks a user-defined constructor,
 # which can lead to errors.
 # Constexpr function return type is not a literal type.
-IF(CMAKE_CXX_COMPILER_ID MATCHES "SunPro")
+IF(MY_COMPILER_IS_SUNPRO)
   SET_TARGET_PROPERTIES(sql_gis PROPERTIES
     COMPILE_FLAGS "-erroff=refmemnoconstr,w_constexprnonlitret")
   ADD_COMPILE_FLAGS(
@@ -796,11 +813,20 @@ ENDIF()
 # With Studio 12.6 we may get linking errors for large binaries,
 # so we add -g0 here to enable inlining of boost/geometry.
 # This also cuts link time by almost one hour for large binaries ....
-IF(CMAKE_CXX_COMPILER_ID MATCHES "SunPro")
+IF(MY_COMPILER_IS_SUNPRO)
   ADD_COMPILE_FLAGS(
     ${SQL_GIS_SOURCES}
     sql_exception_handler.cc
     COMPILE_FLAGS " -g0 -xdebuginfo=no%decl")
+ENDIF()
+
+# segfault in boost geometry ....
+IF(SOLARIS AND MY_COMPILER_IS_GNU AND
+    CMAKE_BUILD_TYPE_UPPER MATCHES "REL")
+  ADD_COMPILE_FLAGS(
+    ${SQL_GIS_SOURCES}
+    COMPILE_FLAGS "-O0"
+    )
 ENDIF()
 
 ADD_LIBRARY(sql_dd STATIC ${DD_SOURCES})
@@ -831,11 +857,15 @@ ENDIF()
 SET(BINLOG_SOURCE
   basic_istream.cc
   basic_ostream.cc
+  binlog/global.cc
+  binlog/monitoring/context.cc
+  binlog/tools/iterators.cc
   binlog.cc
   binlog_istream.cc
   binlog_ostream.cc
   binlog_reader.cc
   log_event.cc
+  rpl_commit_stage_manager.cc
   rpl_filter.cc
   rpl_gtid_execution.cc
   rpl_gtid_misc.cc
@@ -909,10 +939,124 @@ ELSE()
   SET(MYSQLD_SOURCE main.cc)
 ENDIF()
 
+<<<<<<< HEAD
+=======
+MYSQL_ADD_EXECUTABLE(mysqld
+  ${MYSQLD_SOURCE} DESTINATION ${INSTALL_SBINDIR} COMPONENT Server
+  ) 
+
+# We depend on protobuf because of the mysqlx plugin.
+IF(UNIX_INSTALL_RPATH_ORIGIN_PRIV_LIBDIR)
+  ADD_INSTALL_RPATH_FOR_PROTOBUF(mysqld)
+ENDIF()
+>>>>>>> mysql-8.0.20
 
 OPTION(DEBUG_EXTNAME "Build server as mysqld-debug (debug builds only)" OFF)
 MARK_AS_ADVANCED(DEBUG_EXTNAME)
 
+<<<<<<< HEAD
+=======
+IF(DEBUG_EXTNAME)
+  SET_TARGET_PROPERTIES(mysqld PROPERTIES DEBUG_OUTPUT_NAME "mysqld-debug")
+ENDIF()
+
+# macOS has problems with enabling LTO for shared libs, so we only set it
+# as target property for mysqld.
+IF(APPLE AND WITH_LTO)
+  SET_TARGET_PROPERTIES(mysqld PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+ENDIF()
+
+IF(APPLE)
+  # Add CoreServices framework since some dloadable plugins may need it 
+  FIND_LIBRARY(CORESERVICES NAMES CoreServices) 
+  IF(CORESERVICES) 
+    TARGET_LINK_LIBRARIES(mysqld ${CORESERVICES}) 
+  ENDIF() 
+  IF(NOT BUILD_IS_SINGLE_CONFIG)
+    ADD_COMPILE_DEFINITIONS(mysqld.cc COMPILE_DEFINITIONS APPLE_XCODE)
+  ENDIF()
+ENDIF() 
+
+SET_TARGET_PROPERTIES(mysqld PROPERTIES ENABLE_EXPORTS TRUE)
+GET_TARGET_PROPERTY(mysqld_link_flags mysqld LINK_FLAGS)
+IF(NOT mysqld_link_flags)
+  SET(mysqld_link_flags)
+ENDIF()
+
+IF(UNIX_INSTALL_RPATH_ORIGIN_PRIV_LIBDIR OR LINUX_INSTALL_RPATH_ORIGIN)
+  # Because of INSTALL_DEBUG_TARGET which does INSTALL(FILES ...)
+  IF(UNIX AND NOT APPLE AND CMAKE_BUILD_TYPE_UPPER STREQUAL "DEBUG")
+    STRING_APPEND(mysqld_link_flags
+      " -Wl,-rpath,'\$ORIGIN/../${INSTALL_PRIV_LIBDIR}'")
+    SET_TARGET_PROPERTIES(mysqld
+      PROPERTIES LINK_FLAGS "${mysqld_link_flags}")
+    MESSAGE(STATUS "LINK_FLAGS for mysqld ${mysqld_link_flags}")
+  ENDIF()
+
+  # Insert absolute INSTALL_RPATH before $ORIGIN values.
+  # This is done in order to support setuid executables, needed by:
+  # https://dev.mysql.com/doc/refman/8.0/en/resource-groups.html
+  IF(INSTALL_LAYOUT STREQUAL "DEB" OR INSTALL_LAYOUT STREQUAL "RPM")
+    GET_TARGET_PROPERTY(CURRENT_RPATH_mysqld mysqld INSTALL_RPATH)
+    LIST(INSERT CURRENT_RPATH_mysqld 0
+      "${CMAKE_INSTALL_PREFIX}/${INSTALL_PRIV_LIBDIR}")
+    SET_TARGET_PROPERTIES(mysqld
+      PROPERTIES INSTALL_RPATH "${CURRENT_RPATH_mysqld}")
+  ENDIF()
+ENDIF()
+
+IF(MSVC)
+  # Set module definition file.
+  SET_TARGET_PROPERTIES(mysqld
+    PROPERTIES LINK_FLAGS
+    "${mysqld_link_flags} /DEF:${CMAKE_CURRENT_BINARY_DIR}/mysqld.def")
+
+  SET(_PLATFORM  x64)
+  ADD_CUSTOM_COMMAND(TARGET mysqld PRE_LINK
+    COMMAND echo ${_PLATFORM} && cscript ARGS //nologo ${PROJECT_SOURCE_DIR}/win/create_def_file.js
+    ${_PLATFORM}
+    "$<TARGET_FILE:binlog>"
+    "$<TARGET_FILE:binlogevents_static>"
+    "$<TARGET_FILE:mysys>"
+    "$<TARGET_FILE:mytime>"
+    "$<TARGET_FILE:rpl>"
+    "$<TARGET_FILE:slave>"
+    "$<TARGET_FILE:sql_main>"
+    "$<TARGET_FILE:strings>"
+    "$<TARGET_FILE:vio>"
+    > mysqld.def
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  ADD_DEPENDENCIES(sql_main GenError)
+ENDIF()
+
+SET_TARGET_PROPERTIES(mysqld PROPERTIES ENABLE_EXPORTS TRUE) 
+TARGET_LINK_LIBRARIES(mysqld
+  sql_main sql_gis binlog rpl master slave sql_dd mysys
+  minchassis binlogevents_static ${ICU_LIBRARIES})
+
+# Remove transitive link dependencies when linking plugins
+SET_TARGET_PROPERTIES(mysqld PROPERTIES INTERFACE_LINK_LIBRARIES "")
+
+SET(WITH_MYSQLD_LDFLAGS "" CACHE STRING "Additional linker flags for mysqld")
+MARK_AS_ADVANCED(WITH_MYSQLD_LDFLAGS)
+IF(WITH_MYSQLD_LDFLAGS)
+  GET_TARGET_PROPERTY(MYSQLD_LINK_FLAGS mysqld LINK_FLAGS)
+  IF(NOT MYSQLD_LINK_FLAGS)
+    SET(MYSQLD_LINK_FLAGS) 
+  ENDIF() 
+  SET_TARGET_PROPERTIES(mysqld PROPERTIES LINK_FLAGS 
+     "${MYSQLD_LINK_FLAGS} ${WITH_MYSQLD_LDFLAGS}")
+ENDIF()
+
+# See DEBUG_EXTNAME above: mysqld may already have name mysqld-debug,
+# and the rename is a no-op. If it is called 'mysqld' we rename it.
+INSTALL_DEBUG_TARGET(mysqld
+  DESTINATION ${INSTALL_SBINDIR}
+  RENAME mysqld-debug${CMAKE_EXECUTABLE_SUFFIX}
+)
+
+# Check BISON_VERSION and set BISON_FLAGS_WARNINGS
+>>>>>>> mysql-8.0.20
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/bison.cmake)
 
 IF(BISON_FOUND)
@@ -977,6 +1121,10 @@ SET_SOURCE_FILES_PROPERTIES(
 
 # Gen_lex_hash
 MYSQL_ADD_EXECUTABLE(gen_lex_hash gen_lex_hash.cc SKIP_INSTALL)
+
+IF(HAS_MISSING_PROFILE)
+  ADD_COMPILE_FLAGS(gen_lex_hash.cc COMPILE_FLAGS ${HAS_MISSING_PROFILE})
+ENDIF()
 
 ADD_CUSTOM_COMMAND(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lex_hash.h

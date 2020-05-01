@@ -1,4 +1,4 @@
-# Copyright (c) 2006, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2006, 2020, Oracle and/or its affiliates. All rights reserved.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -111,7 +111,13 @@ MYSQL_ADD_PLUGIN(myisam ha_myisam.cc
   LINK_LIBRARIES myisam_library
 )
 
+<<<<<<< HEAD
 MYSQL_ADD_EXECUTABLE(myisam_ftdump myisam_ftdump.cc SKIP_INSTALL)
+=======
+DISABLE_MISSING_PROFILE_WARNING()
+
+MYSQL_ADD_EXECUTABLE(myisam_ftdump myisam_ftdump.cc)
+>>>>>>> mysql-8.0.20
 TARGET_LINK_LIBRARIES(myisam_ftdump myisam_library)
 
 MYSQL_ADD_EXECUTABLE(myisamchk myisamchk.cc SKIP_INSTALL)
