@@ -1864,9 +1864,10 @@ static bool innodb_init_param(void) {
   default_path = current_dir;
 
   ut_a(default_path);
-
-  MySQL_datadir_path = Fil_path{default_path};
-
+  {
+    std::string mysqld_datadir{default_path};
+    MySQL_datadir_path = Fil_path{mysqld_datadir};
+  }
   /* Set InnoDB initialization parameters according to the values
   read from MySQL .cnf file */
 
@@ -1885,7 +1886,17 @@ static bool innodb_init_param(void) {
       ((xtrabackup_backup || xtrabackup_stats) && innobase_data_home_dir
            ? innobase_data_home_dir
            : default_path);
+  Fil_path::normalize(srv_data_home);
   msg("xtrabackup:   innodb_data_home_dir = %s\n", srv_data_home);
+
+  /* Validate the undo directory. */
+  if (srv_undo_dir == nullptr) {
+    srv_undo_dir = default_path;
+  } else {
+    Fil_path::normalize(srv_undo_dir);
+  }
+
+  MySQL_undo_path = Fil_path{srv_undo_dir};
 
   /*--------------- Shared tablespaces -------------------------*/
 
@@ -2200,6 +2211,30 @@ error:
   ut_free(sdi);
 
   return (err);
+}
+
+static void xb_scan_for_tablespaces() {
+  /* This is the default directory for IBD and IBU files. Put it first
+  in the list of known directories. */
+  fil_set_scan_dir(MySQL_datadir_path.path());
+
+  /* Add --innodb-data-home-dir as a known location for IBD and IBU files
+  if it is not already there. */
+  ut_ad(srv_data_home != nullptr && *srv_data_home != '\0');
+  fil_set_scan_dir(Fil_path::remove_quotes(srv_data_home));
+
+  /* Add --innodb-directories as known locations for IBD and IBU files. */
+  if (srv_innodb_directories != nullptr && *srv_innodb_directories != 0) {
+    fil_set_scan_dirs(Fil_path::remove_quotes(srv_innodb_directories));
+  }
+
+  /* For the purpose of file discovery at startup, we need to scan
+  --innodb-undo-directory also. */
+  fil_set_scan_dir(Fil_path::remove_quotes(MySQL_undo_path), true);
+
+  msg("xtrabackup: Generating a list of tablespaces\n");
+
+  fil_scan_for_tablespaces(true);
 }
 
 static void dict_load_from_spaces_sdi() {
@@ -3169,7 +3204,7 @@ static dberr_t xb_load_tablespaces(void)
   }
 
   msg("xtrabackup: Generating a list of tablespaces\n");
-  fil_scan_for_tablespaces(true);
+  xb_scan_for_tablespaces();
 
   /* Add separate undo tablespaces to fil_system */
 
