@@ -95,11 +95,6 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "datasink.h"
 #include "xtrabackup_version.h"
 
-#include <mysql/components/minimal_chassis.h>
-#include <mysql/components/services/dynamic_loader_scheme_file.h>
-#include <mysql/components/services/mysql_psi_system_service.h>
-#include <mysql/components/services/mysql_rwlock_service.h>
-#include <mysql/components/services/ongoing_transaction_query_service.h>
 #include "backup_copy.h"
 #include "backup_mysql.h"
 #include "changed_page_bitmap.h"
@@ -112,10 +107,6 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "read_filt.h"
 #include "redo_log.h"
 #include "space_map.h"
-#include "sql/server_component/component_sys_var_service_imp.h"
-#include "sql/server_component/log_builtins_filter_imp.h"
-#include "sql/server_component/log_builtins_imp.h"
-#include "sql/server_component/persistent_dynamic_loader_imp.h"
 #include "write_filt.h"
 #include "wsrep.h"
 #include "xb0xb.h"
@@ -130,8 +121,6 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #define DICT_TF_ZSSIZE_SHIFT 1
 #define DICT_TF_FORMAT_ZIP 1
 #define DICT_TF_FORMAT_SHIFT 5
-SERVICE_TYPE_NO_CONST(registry) * srv_registry;
-extern bool initialize_minimal_chassis(SERVICE_TYPE_NO_CONST(registry) *);
 static MEM_ROOT argv_alloc{PSI_NOT_INSTRUMENTED, 512};
 
 /* we cannot include sql/log.h because it conflicts with innodb headers */
@@ -149,6 +138,7 @@ const char reserved_system_space_name[] = "innodb_system";
 /* This tablespace name is reserved by InnoDB for the predefined temporary
 tablespace. */
 const char reserved_temporary_space_name[] = "innodb_temporary";
+ulong opt_ssl_fips_mode = SSL_FIPS_MODE_OFF;
 
 /* === xtrabackup specific options === */
 char xtrabackup_real_target_dir[FN_REFLEN] = "./xtrabackup_backupfiles/";
@@ -3690,7 +3680,7 @@ static void init_mysql_environment() {
   transaction_cache_init();
 
   mdl_init();
-  // initialize_minimal_chassis(&srv_registry);
+  component_infrastructure_init();
 }
 
 static void cleanup_mysql_environment() {
@@ -3700,7 +3690,7 @@ static void cleanup_mysql_environment() {
   table_def_free();
   mdl_destroy();
   Srv_session::module_deinit();
-  // component_infrastructure_deinit();
+  component_infrastructure_deinit();
 
   mysql_mutex_destroy(&LOCK_status);
   mysql_mutex_destroy(&LOCK_global_system_variables);

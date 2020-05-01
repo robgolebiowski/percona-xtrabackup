@@ -1761,7 +1761,7 @@ extern bool deinitialize_minimal_chassis(SERVICE_TYPE_NO_CONST(registry) *
   @retval false success
   @retval true failure
 */
-static bool component_infrastructure_init() {
+bool component_infrastructure_init() {
   if (initialize_minimal_chassis(&srv_registry)) {
     LogErr(ERROR_LEVEL, ER_COMPONENTS_INFRASTRUCTURE_BOOTSTRAP);
     return true;
@@ -1855,7 +1855,7 @@ static bool mysql_component_infrastructure_init() {
   @retval false success
   @retval true failure
 */
-static bool component_infrastructure_deinit() {
+bool component_infrastructure_deinit() {
   persistent_dynamic_loader_deinit();
 
   srv_registry->release(reinterpret_cast<my_h_service>(
