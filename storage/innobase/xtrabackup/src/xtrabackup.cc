@@ -1889,15 +1889,6 @@ static bool innodb_init_param(void) {
   Fil_path::normalize(srv_data_home);
   msg("xtrabackup:   innodb_data_home_dir = %s\n", srv_data_home);
 
-  /* Validate the undo directory. */
-  if (srv_undo_dir == nullptr) {
-    srv_undo_dir = default_path;
-  } else {
-    Fil_path::normalize(srv_undo_dir);
-  }
-
-  MySQL_undo_path = Fil_path{srv_undo_dir};
-
   /*--------------- Shared tablespaces -------------------------*/
 
   /* Set default InnoDB data file size to 10 MB and let it be
@@ -2095,6 +2086,10 @@ static bool innodb_init_param(void) {
     my_free(srv_undo_dir);
     srv_undo_dir = my_strdup(PSI_NOT_INSTRUMENTED, ".", MYF(MY_FAE));
   }
+
+  ut_ad(srv_undo_dir != nullptr);
+  Fil_path::normalize(srv_undo_dir);
+  MySQL_undo_path = Fil_path{srv_undo_dir};
 
   /* We want to save original value of srv_temp_dir because InnoDB will
   modify ibt::srv_temp_dir. */
