@@ -544,6 +544,8 @@ dberr_t SysTablespace::read_lsn_and_check_flags(lsn_t *flushed_lsn) {
 
   ut_a(it->order() == 0);
 
+  err = recv_sys->dblwr->load();
+
   if (err != DB_SUCCESS) {
     return (err);
   }

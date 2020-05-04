@@ -1889,12 +1889,8 @@ static bool innodb_init_param(void) {
   Fil_path::normalize(srv_data_home);
   msg("xtrabackup:   innodb_data_home_dir = %s\n", srv_data_home);
 
-  /* Assign the default value to srv_undo_dir if it's not specified, as
-  my_getopt does not support default values for string options. We also
-  ignore the option and override innodb_undo_directory on --prepare,
-  because separate undo tablespaces are copied to the root backup
-  directory. */
-  if (srv_undo_dir == nullptr || !xtrabackup_backup) {
+  /* Validate the undo directory. */
+  if (srv_undo_dir == nullptr) {
     srv_undo_dir = default_path;
   } else {
     Fil_path::normalize(srv_undo_dir);
@@ -2088,6 +2084,17 @@ static bool innodb_init_param(void) {
   srv_use_native_aio = FALSE;
 
 #endif
+
+  /* Assign the default value to srv_undo_dir if it's not specified, as
+  my_getopt does not support default values for string options. We also
+  ignore the option and override innodb_undo_directory on --prepare,
+  because separate undo tablespaces are copied to the root backup
+  directory. */
+
+  if (!srv_undo_dir || !xtrabackup_backup) {
+    my_free(srv_undo_dir);
+    srv_undo_dir = my_strdup(PSI_NOT_INSTRUMENTED, ".", MYF(MY_FAE));
+  }
 
   /* We want to save original value of srv_temp_dir because InnoDB will
   modify ibt::srv_temp_dir. */
